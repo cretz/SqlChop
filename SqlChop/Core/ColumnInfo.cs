@@ -10,85 +10,30 @@ namespace SqlChop.Core
     {
         private const double THREE_AND_ONE_THIRD = 10 / 3.0d;
 
-        private readonly string _Name;
-        private readonly SqlDbType _DataType;
-        private readonly int _OrdinalPosition;
-        private readonly byte? _Precision;
-        private readonly int? _Scale;
-        private readonly int? _MaxCharacterLength;
-        private readonly int? _MaxByteLength;
-        private readonly bool _IsNullable;
+        private string _Name;
+        private SqlDbType _DataType;
+        private int _OrdinalPosition;
+        private byte? _Precision;
+        private int? _Scale;
+        private int? _MaxCharacterLength;
+        private int? _MaxByteLength;
+        private bool _IsNullable;
 
-        internal ColumnInfo(DataRow row)
-        {
-            _Name = (string)row["COLUMN_NAME"];
-            _DataType = (SqlDbType)Enum.Parse(typeof(SqlDbType), (string)row["DATA_TYPE"], true);
-            _OrdinalPosition = (int)row["ORDINAL_POSITION"];
-            if (row.IsNull("NUMERIC_PRECISION"))
-            {
-                _Precision = null;
-            }
-            else
-            {
-                _Precision = (byte)row["NUMERIC_PRECISION"];
-            }
-            if (row.IsNull("NUMERIC_SCALE"))
-            {
-                _Scale = null;
-            }
-            else
-            {
-                _Scale = (int)row["NUMERIC_SCALE"];
-            }
-            if (row.IsNull("CHARACTER_MAXIMUM_LENGTH"))
-            {
-                _MaxCharacterLength = null;
-            }
-            else
-            {
-                //can be two different types
-                _MaxCharacterLength = int.Parse(row["CHARACTER_MAXIMUM_LENGTH"].ToString());
-            }
-            if (row.IsNull("CHARACTER_OCTET_LENGTH"))
-            {
-                _MaxByteLength = null;
-            }
-            else
-            {
-                //can be two different types
-                _MaxByteLength = int.Parse(row["CHARACTER_OCTET_LENGTH"].ToString());
-            }
-            _IsNullable = "YES".Equals(row["IS_NULLABLE"]);
-        }
+        public string Name { get { return _Name; } set { _Name = value; } }
 
-        internal ColumnInfo(string name, SqlDbType dataType, int ordinalPosition, byte? precision, int? scale,
-            int? maxCharacterLength, int? maxByteLength, bool isNullable)
-        {
-            _Name = name;
-            _DataType = dataType;
-            _OrdinalPosition = ordinalPosition;
-            _Precision = precision;
-            _Scale = scale;
-            _MaxCharacterLength = maxCharacterLength;
-            _MaxByteLength = maxByteLength;
-            _IsNullable = isNullable;
-        }
+        public SqlDbType DataType { get { return _DataType; } set { _DataType = value; } }
 
-        public string Name { get { return _Name; } }
+        public int OrdinalPosition { get { return _OrdinalPosition; } set { _OrdinalPosition = value; } }
 
-        public SqlDbType DataType { get { return _DataType; } }
+        public byte? Precision { get { return _Precision; } set { _Precision = value; } }
 
-        public int OrdinalPosition { get { return _OrdinalPosition; } }
+        public int? Scale { get { return _Scale; } set { _Scale = value; } }
 
-        public byte? Precision { get { return _Precision; } }
+        public int? MaxCharacterLength { get { return _MaxCharacterLength; } set { _MaxCharacterLength = value; } }
 
-        public int? Scale { get { return _Scale; } }
+        public int? MaxByteLength { get { return _MaxByteLength; } set { _MaxByteLength = value; } }
 
-        public int? MaxCharacterLength { get { return _MaxCharacterLength; } }
-
-        public int? MaxByteLength { get { return _MaxByteLength; } }
-
-        public bool IsNullable { get { return _IsNullable; } }
+        public bool IsNullable { get { return _IsNullable; } set { _IsNullable = value; } }
 
         internal bool IsFixedWidth
         {
@@ -185,10 +130,10 @@ namespace SqlChop.Core
                     switch (length)
                     {
                         case 1: return (long)bytes[offset];
-                        case 2: return (long)BitConverter.ToUInt16(bytes, offset);
+                        case 2: return (long)BitUtil.ToUInt16(bytes, offset, true);
                         case 3: return (long)BitUtil.ToUInt24(bytes, offset, true);
-                        case 4: return (long)BitConverter.ToUInt32(bytes, offset);
-                        case 8: return BitConverter.ToInt64(bytes, offset);
+                        case 4: return (long)BitUtil.ToUInt32(bytes, offset, true);
+                        case 8: return BitUtil.ToInt64(bytes, offset, true);
                         default: throw new Exception("Unrecognized length for bigint: " + length);
                     }
                 case SqlDbType.Binary:
@@ -213,7 +158,7 @@ namespace SqlChop.Core
                     byte[] varCharBytes = new byte[length];
                     Array.Copy(bytes, offset, varCharBytes, 0, length);
                     return Encoding.UTF8.GetString(varCharBytes);
-                case SqlDbType.Date: return new DateTime().AddDays(BitConverter.ToInt32(bytes, offset + 4));
+                case SqlDbType.Date: return new DateTime().AddDays(BitUtil.ToInt32(bytes, offset + 4, true));
                 case SqlDbType.DateTime:
                     if (length < 8)
                     {
@@ -229,17 +174,17 @@ namespace SqlChop.Core
                                 dateBytes[i] = 0;
                             }
                         }
-                        return new DateTime(1900, 1, 1).AddDays(BitConverter.ToInt32(dateBytes, 4)).
-                            AddMilliseconds(THREE_AND_ONE_THIRD * BitConverter.ToInt32(dateBytes, 0));
+                        return new DateTime(1900, 1, 1).AddDays(BitUtil.ToInt32(dateBytes, 4, true)).
+                            AddMilliseconds(THREE_AND_ONE_THIRD * BitUtil.ToInt32(dateBytes, 0, true));
                     }
                     else
                     {
-                        return new DateTime(1900, 1, 1).AddDays(BitConverter.ToInt32(bytes, offset + 4)).
-                            AddMilliseconds(THREE_AND_ONE_THIRD * BitConverter.ToInt32(bytes, offset));
+                        return new DateTime(1900, 1, 1).AddDays(BitUtil.ToInt32(bytes, offset + 4, true)).
+                            AddMilliseconds(THREE_AND_ONE_THIRD * BitUtil.ToInt32(bytes, offset, true));
                     }
                 case SqlDbType.DateTime2:
-                    return new DateTime().AddDays(BitConverter.ToInt32(bytes, offset + 8)).
-                        AddMilliseconds(1000d / Math.Pow(10, Scale.Value) * BitConverter.ToInt64(bytes, offset));
+                    return new DateTime().AddDays(BitUtil.ToInt32(bytes, offset + 8, true)).
+                        AddMilliseconds(1000d / Math.Pow(10, Scale.Value) * BitUtil.ToInt64(bytes, offset, true));
                 case SqlDbType.DateTimeOffset: return "DateTimeOffset not supported";
                 case SqlDbType.Decimal:
                     //when data type length is less than the data type length, we must pad with zeroes
@@ -251,10 +196,10 @@ namespace SqlChop.Core
                         length = DataTypeLength.Value;
                     }
                     int[] bits = new int[4];
-                    bits[0] = BitConverter.ToInt32(bytes, offset + 1);
-                    bits[1] = length >= 9 ? BitConverter.ToInt32(bytes, offset + 5) : 0;
-                    bits[2] = length >= 13 ? BitConverter.ToInt32(bytes, offset + 9) : 0;
-                    bits[3] = length >= 17 ? BitConverter.ToInt32(bytes, offset + 13) : 0;
+                    bits[0] = BitUtil.ToInt32(bytes, offset + 1, true);
+                    bits[1] = length >= 9 ? BitUtil.ToInt32(bytes, offset + 5, true) : 0;
+                    bits[2] = length >= 13 ? BitUtil.ToInt32(bytes, offset + 9, true) : 0;
+                    bits[3] = length >= 17 ? BitUtil.ToInt32(bytes, offset + 13, true) : 0;
                     //sometimes this is bigger than C#'s max precision/scale of 28 so just return SqlDecimal
                     if (_Precision > 28 || _Scale > 28)
                     {
@@ -268,10 +213,10 @@ namespace SqlChop.Core
                     switch (length)
                     {
                         case 7:
-                            return BitConverter.ToDouble(new byte[] {
+                            return BitUtil.ToDouble(new byte[] {
                                 bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3], 
-                                bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], 64 }, 0);
-                        case 8: return BitConverter.ToDouble(bytes, offset);
+                                bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], 64 }, 0, true);
+                        case 8: return BitUtil.ToDouble(bytes, offset, true);
                         default: throw new Exception("Unrecognized float length: " + length);
                     }
                 case SqlDbType.Image: return "Image not supported";
@@ -279,9 +224,9 @@ namespace SqlChop.Core
                     switch (length)
                     {
                         case 1: return (int)bytes[offset];
-                        case 2: return (int)BitConverter.ToUInt16(bytes, offset);
+                        case 2: return (int)BitUtil.ToUInt16(bytes, offset, true);
                         case 3: return (int)BitUtil.ToUInt24(bytes, offset, true);
-                        case 4: return BitConverter.ToInt32(bytes, offset);
+                        case 4: return BitUtil.ToInt32(bytes, offset, true);
                         default: throw new Exception("Unrecognized int length : " + length);
                     }
                 case SqlDbType.Money:
@@ -299,9 +244,9 @@ namespace SqlChop.Core
                                 moneyBytes[i] = (byte)(i == 2 ? 1 : 0);
                             }
                         }
-                        return BitConverter.ToInt64(moneyBytes, 0) / 10000d;
+                        return BitUtil.ToInt64(moneyBytes, 0, true) / 10000d;
                     }
-                    return BitConverter.ToInt64(bytes, offset) / 10000d;
+                    return BitUtil.ToInt64(bytes, offset, true) / 10000d;
                 case SqlDbType.NChar:
                     byte[] ncharBytes = new byte[DataTypeLength.Value];
                     Array.Copy(bytes, offset, ncharBytes, 0, length);
@@ -318,24 +263,24 @@ namespace SqlChop.Core
                     Array.Copy(bytes, offset, nvarCharBytes, 0, length);
                     return Encoding.Unicode.GetString(nvarCharBytes);
                 case SqlDbType.NText: return "NText not supported";
-                case SqlDbType.Real: return BitConverter.ToSingle(bytes, offset);
+                case SqlDbType.Real: return BitUtil.ToSingle(bytes, offset, true);
                 case SqlDbType.SmallDateTime:
-                    return new DateTime(1900, 1, 1).AddDays(BitConverter.ToUInt16(bytes, offset + 2)).
-                        AddMinutes(BitConverter.ToUInt16(bytes, offset));
+                    return new DateTime(1900, 1, 1).AddDays(BitUtil.ToUInt16(bytes, offset + 2, true)).
+                        AddMinutes(BitUtil.ToUInt16(bytes, offset, true));
                 case SqlDbType.SmallInt:
-                    return length == 1 ? (short)bytes[offset] : BitConverter.ToInt16(bytes, offset);
+                    return length == 1 ? (short)bytes[offset] : BitUtil.ToInt16(bytes, offset, true);
                 case SqlDbType.SmallMoney:
                     switch (length)
                     {
-                        case 3: return BitConverter.ToInt32(new byte[] {
-                            bytes[offset], bytes[offset + 1], bytes[offset + 2], 0 }, 0) / 10000d;
-                        case 4: return BitConverter.ToInt32(bytes, offset) / 10000d;
+                        case 3: return BitUtil.ToInt32(new byte[] {
+                            bytes[offset], bytes[offset + 1], bytes[offset + 2], 0 }, 0, true) / 10000d;
+                        case 4: return BitUtil.ToInt32(bytes, offset, true) / 10000d;
                         default: throw new Exception("Unrecognized length for small money: " + length);
                     }
                 case SqlDbType.Structured: return "Structured not supported";
                 case SqlDbType.Text: return "Text not supported";
                 case SqlDbType.Time:
-                    return TimeSpan.FromMilliseconds(1000d / Math.Pow(10, Scale.Value) * BitConverter.ToInt64(bytes, offset));
+                    return TimeSpan.FromMilliseconds(1000d / Math.Pow(10, Scale.Value) * BitUtil.ToInt64(bytes, offset, true));
                 case SqlDbType.Timestamp: return "Timestamp not supported";
                 case SqlDbType.TinyInt: return bytes[offset];
                 case SqlDbType.Udt: return "UDT's not supported";

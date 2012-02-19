@@ -16,11 +16,11 @@ namespace SqlChop.Core
             _ColumnValues = new Dictionary<ColumnInfo, object>(table.Columns.Count);
             switch (operation)
             {
-                case Operation.Insert:
-                case Operation.Delete:
+                case Operation.InsertRows:
+                case Operation.DeleteRows:
                     ParseRowContents(bytes, 0);
                     break;
-                case Operation.Update:
+                case Operation.ModifyRow:
                     ParseRowContents(bytes, rowOffset.Value);
                     break;
             }
@@ -35,7 +35,7 @@ namespace SqlChop.Core
             //second byte is skipped
             //third and fourth is the amount of bytes for fixed width cols
             //  (+4 for the 2 here and the 2 above)
-            int posOffset = BitConverter.ToInt16(bytes, 2);
+            int posOffset = BitUtil.ToInt16(bytes, 2, true);
             //number of cols is two bytes at the end of this
             int colCount = 1;
             byte[] nullability = new byte[(int)Math.Ceiling(colCount / 8d)];
@@ -47,7 +47,7 @@ namespace SqlChop.Core
             if (posOffset != 0 && bytes.Length > posOffset)
             {
                 //colCount
-                colCount = BitConverter.ToInt16(bytes, posOffset);
+                colCount = BitUtil.ToInt16(bytes, posOffset, true);
                 if (colCount != _Table.Columns.Count)
                 {
                     throw new Exception("Expected " + _Table.Columns.Count + " columns, but received " +
@@ -63,7 +63,7 @@ namespace SqlChop.Core
                     {
                         //may not have var length columns (and may show 1-byte 0 or just not be there)
                         varLengthColumnCount = bytes.Length <= posOffset + 1 ? -1 :
-                            BitConverter.ToInt16(bytes, posOffset);
+                            BitUtil.ToInt16(bytes, posOffset, true);
                         varLengthColumnCountBegin = posOffset + 2;
                         varLengthColumnCurrentCount = 0;
                         varLengthColumnOffset = posOffset + 2 + (varLengthColumnCount * 2);
@@ -82,6 +82,10 @@ namespace SqlChop.Core
                     }
                     else
                     {
+                        if (!col.DataTypeLength.HasValue)
+                        {
+                            Console.WriteLine();
+                        }
                         int length = col.DataTypeLength.Value;
                         //sometimes, the last column is trimmed to a certain size (e.g. positive bigint can be uint24)
                         if (fixedLengthColumnOffset + length >= bytes.Length)
@@ -99,8 +103,8 @@ namespace SqlChop.Core
                 }
                 else if (varLengthColumnCount > 0 && bytes.Length > varLengthColumnOffset)
                 {
-                    int end = BitConverter.ToInt16(bytes, varLengthColumnCountBegin +
-                        (varLengthColumnCurrentCount * 2));
+                    int end = BitUtil.ToInt16(bytes, varLengthColumnCountBegin +
+                        (varLengthColumnCurrentCount * 2), true);
                     //sometimes, the last column is trimmed to a certain size
                     if (end >= bytes.Length)
                     {
@@ -145,13 +149,13 @@ namespace SqlChop.Core
                     if (ret.Length > offset)
                     {
                         //now we can set the col count position
-                        BitConverter.GetBytes((short)offset).CopyTo(ret, 2);
+                        BitUtil.GetBytes((short)offset, true).CopyTo(ret, 2);
                     }
                     if (rowOffset > offset)
                     {
                         onlyVarCols = true;
                         //now set the actual col count
-                        BitConverter.GetBytes((short)_Table.Columns.Count).CopyTo(ret, offset);
+                        BitUtil.GetBytes((short)_Table.Columns.Count, true).CopyTo(ret, offset);
                         offset += 2;
                         if (rowOffset > offset)
                         {
@@ -161,12 +165,12 @@ namespace SqlChop.Core
                             if (rowOffset > offset)
                             {
                                 //must be a count of only 1
-                                BitConverter.GetBytes((short)1).CopyTo(ret, offset);
+                                BitUtil.GetBytes((short)1, true).CopyTo(ret, offset);
                                 offset += 2;
                                 if (rowOffset > offset)
                                 {
                                     //must end at the end of the array
-                                    BitConverter.GetBytes((short)ret.Length).CopyTo(ret, offset);
+                                    BitUtil.GetBytes((short)ret.Length, true).CopyTo(ret, offset);
                                 }
                             }
                         }

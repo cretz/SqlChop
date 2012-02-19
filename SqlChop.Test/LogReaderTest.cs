@@ -272,31 +272,31 @@ namespace SqlChop.Test
             Dictionary<SqlDataType, object> newVals, bool nullable)
         {
             //create table
-            TestUtils.CreateDataTypesTable("LogReaderTest", vals.Keys, nullable);
+            TestUtil.CreateDataTypesTable("LogReaderTest", vals.Keys, nullable);
             //do insert
-            TestUtils.InsertIntoDataTypesTable("LogReaderTest", vals);
+            TestUtil.InsertIntoDataTypesTable("LogReaderTest", vals);
             //grab record
-            RecordInfo record = TestUtils.GetLatestRecord("LogReaderTest", Operation.Insert);
+            RecordInfo record = TestUtil.GetLatestRecord("LogReaderTest", Operation.InsertRows);
             //check insert
             Assert.IsNotNull(record.NewRow);
             AssertRowValues(record.NewRow, vals);
             //do update
-            TestUtils.UpdateDataTypesTable("LogReaderTest", newVals);
+            TestUtil.UpdateDataTypesTable("LogReaderTest", newVals);
             //grab record
-            record = TestUtils.GetLatestRecord("LogReaderTest", Operation.Update);
+            record = TestUtil.GetLatestRecord("LogReaderTest", Operation.ModifyRow);
             Assert.IsNotNull(record.OriginalRow);
             AssertRowValues(record.OriginalRow, vals);
             Assert.IsNotNull(record.NewRow);
             AssertRowValues(record.NewRow, newVals);
             //do delete
-            TestUtils.DeleteFromDataTypesTable("LogReaderTest");
+            TestUtil.DeleteFromDataTypesTable("LogReaderTest");
             //grab record
-            record = TestUtils.GetLatestRecord("LogReaderTest", Operation.Delete);
+            record = TestUtil.GetLatestRecord("LogReaderTest", Operation.DeleteRows);
             //check delete
             Assert.IsNotNull(record.OriginalRow);
             AssertRowValues(record.OriginalRow, newVals);
             //drop table
-            TestUtils.DropTableIfExists("LogReaderTest");
+            TestUtil.DropTableIfExists("LogReaderTest");
         }
 
         private void AssertRowValues(RowInfo row, Dictionary<SqlDataType, object> vals)

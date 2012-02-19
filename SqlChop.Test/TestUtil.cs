@@ -5,11 +5,12 @@ using NUnit.Framework;
 using System.Data.SqlClient;
 using System.Data;
 using SqlChop.Core;
+using System.Threading;
 
 namespace SqlChop.Test
 {
     [SetUpFixture]
-    public class TestUtils
+    public class TestUtil
     {
         public const string DATABASE_NAME = "DbTest";
 
@@ -19,7 +20,7 @@ namespace SqlChop.Test
         public static void Init()
         {
             SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
-            builder.DataSource = "localhost,8081";
+            builder.DataSource = "localhost,8082";
             builder.InitialCatalog = DATABASE_NAME;
             builder.UserID = "sa";
             builder.Password = "sapass";
@@ -131,18 +132,39 @@ namespace SqlChop.Test
 
         internal static LogSequenceNumber GetLastTransactionBeginLsn()
         {
-            return new LogSequenceNumber((string)new SqlCommand(@"
+            string val = (string)new SqlCommand(@"
 SELECT TOP 1 [Current LSN] FROM fn_dblog(null, null)
 WHERE Operation = 'LOP_BEGIN_XACT'
-ORDER BY [Current LSN] DESC", _Connection).ExecuteScalar());
+ORDER BY [Current LSN] DESC", _Connection).ExecuteScalar();
+            return val == null ? null : new LogSequenceNumber(val);
         }
 
         internal static RecordInfo GetLatestRecord(string tableName, Operation operation)
         {
+            //5 tries
+            for (int i = 0; i < 5; i++)
+            {
+                RecordInfo record = TryGetLatestRecord(tableName, operation);
+                if (record != null)
+                {
+                    return record;
+                }
+                Thread.Sleep(100);
+            }
+            Assert.Fail("No record found");
+            return null;
+        }
+
+        private static RecordInfo TryGetLatestRecord(string tableName, Operation operation)
+        {
             //grab the latest LSN
-            LogSequenceNumber latestLsn = TestUtils.GetLastTransactionBeginLsn();
+            LogSequenceNumber latestLsn = TestUtil.GetLastTransactionBeginLsn();
+            if (latestLsn == null)
+            {
+                return null;
+            }
             //start log reader
-            LogReader reader = new LogReader(TestUtils.Connection);
+            LogReader reader = new LogReader(TestUtil.Connection);
             List<RecordInfo> records = new List<RecordInfo>();
             reader.RecordReceived += delegate(RecordInfo record)
             {
@@ -153,8 +175,7 @@ ORDER BY [Current LSN] DESC", _Connection).ExecuteScalar());
                 }
             };
             reader.Poll(latestLsn);
-            Assert.AreEqual(1, records.Count);
-            return records[0];
+            return records.Count == 0 ? null : records[0];
         }
 
         [TearDown]

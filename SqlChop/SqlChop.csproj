@@ -37,13 +37,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Core\AllocationUnitName.cs" />
     <Compile Include="Core\ColumnInfo.cs" />
+    <Compile Include="Core\ITableInfoProvider.cs" />
     <Compile Include="Core\LogReader.cs" />
     <Compile Include="Core\LogSequenceNumber.cs" />
     <Compile Include="Core\Operation.cs" />
     <Compile Include="Core\RecordInfo.cs" />
     <Compile Include="Core\RowInfo.cs" />
-    <Compile Include="Core\TableInfoCache.cs" />
+    <Compile Include="Core\SqlTableInfoProvider.cs" />
     <Compile Include="Core\TableInfo.cs" />
     <Compile Include="Core\BitUtil.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

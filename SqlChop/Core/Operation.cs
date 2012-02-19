@@ -9,8 +9,9 @@ namespace SqlChop.Core
         Unknown,
         BeginTransaction,
         CommitTransaction,
-        Insert,
-        Update,
-        Delete
+        InsertRows,
+        ModifyRow,
+        ModifyColumns,
+        DeleteRows
     }
 }

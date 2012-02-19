@@ -8,55 +8,28 @@ namespace SqlChop.Core
 {
     public class TableInfo
     {
-        private readonly string _Catalog;
-        private readonly string _Schema;
         private readonly string _Name;
-        private readonly bool _IsFound;
+        private readonly bool _IsSystem;
         private readonly IList<ColumnInfo> _Columns;
         private readonly Dictionary<string, ColumnInfo> _ColumnsByName;
 
-        internal TableInfo(SqlConnection connection, string tableName) :
-            this(connection, null, null, tableName) { }
-
-        internal TableInfo(SqlConnection connection, string catalog, string schema, string tableName)
+        public TableInfo(string name, bool isSystem, IEnumerable<ColumnInfo> columns)
         {
-            DataTable dt = connection.GetSchema(SqlClientMetaDataCollectionNames.Columns,
-                new string[] { catalog, schema, tableName, null });
-            if (dt.Rows.Count == 0)
+            _Name = name;
+            _IsSystem = isSystem;
+            List<ColumnInfo> cols = new List<ColumnInfo>(columns);
+            cols.Sort();
+            _Columns = cols.AsReadOnly();
+            _ColumnsByName = new Dictionary<string, ColumnInfo>(StringComparer.OrdinalIgnoreCase);
+            foreach (ColumnInfo column in columns)
             {
-                _Catalog = catalog;
-                _Schema = schema;
-                _Name = tableName;
-                _IsFound = false;
-                _Columns = new ColumnInfo[0];
-                _ColumnsByName = new Dictionary<string, ColumnInfo>(0);
-            }
-            else
-            {
-                _Catalog = (string)dt.Rows[0]["TABLE_CATALOG"];
-                _Schema = (string)dt.Rows[0]["TABLE_SCHEMA"];
-                _Name = (string)dt.Rows[0]["TABLE_NAME"];
-                _IsFound = true;
-                List<ColumnInfo> cols = new List<ColumnInfo>(dt.Rows.Count);
-                _ColumnsByName = new Dictionary<string, ColumnInfo>(dt.Rows.Count);
-                foreach (DataRow row in dt.Rows)
-                {
-                    ColumnInfo col = new ColumnInfo(row);
-                    cols.Add(col);
-                    _ColumnsByName[col.Name] = col;
-                }
-                //sort by ordinal, very important
-                cols.Sort();
-                _Columns = cols.AsReadOnly();
+                _ColumnsByName[column.Name] = column;
             }
         }
-        public string Catalog { get { return _Catalog; } }
-
-        public string Schema { get { return _Schema; } }
 
         public string Name { get { return _Name; } }
 
-        public bool IsFound { get { return _IsFound; } }
+        public bool IsSystem { get { return _IsSystem; } }
 
         public ColumnInfo this[int index] { get { return _Columns[index]; } }
 

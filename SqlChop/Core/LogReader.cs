@@ -15,12 +15,15 @@ namespace SqlChop.Core
 
         private readonly SqlConnection _Connection;
         private SqlCommand _Command;
-        private readonly TableInfoCache _TableInfoCache;
+        private readonly ITableInfoProvider _TableInfoProvider;
 
-        public LogReader(SqlConnection connection)
+        public LogReader(SqlConnection connection) :
+            this(connection, new SqlTableInfoProvider(connection)) { }
+
+        public LogReader(SqlConnection connection, ITableInfoProvider tableInfoProvider)
         {
             _Connection = connection;
-            _TableInfoCache = new TableInfoCache(connection);
+            _TableInfoProvider = tableInfoProvider;
         }
 
         public void Poll(LogSequenceNumber begin)
@@ -41,9 +44,9 @@ namespace SqlChop.Core
             SqlDataReader reader = _Command.ExecuteReader();
             while (reader.Read())
             {
-                RecordInfo record = new RecordInfo(reader, _TableInfoCache);
                 if (RecordReceived != null)
                 {
+                    RecordInfo record = RecordInfo.BuildRecordInfo(reader, _TableInfoProvider);
                     RecordReceived(record);
                 }
             }
